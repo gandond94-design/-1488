@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, touch-action=manipulation">
+    <title>🐍 Змейка — Мировой рекорд</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(145deg, #0b0f1c 0%, #1a1f32 100%);
+            min-height: 100vh; display: flex; justify-content: center; align-items: center;
+            font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px;
+            transition: background-color 0.09s;
+        }
+        body.matoff { animation: redFlash 0.09s infinite; }
+        @keyframes redFlash { 0%, 100% { background-color: #ff0000; } 50% { background-color: #0b0f1c; } }
+        .game-wrapper {
+            display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center;
+            gap: 25px; max-width: 950px; width: 100%;
+        }
+        .game-container {
+            background: #121726; border-radius: 24px; padding: 20px 20px 25px;
+            box-shadow: 0 30px 50px rgba(0,0,0,0.7), 0 0 0 2px rgba(74,144,226,0.25);
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .header { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 5px; }
+
+        .score-box, .best-box {
+            background: #0a0e18; padding: 12px 20px; border-radius: 16px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 8px 15px rgba(0,0,0,0.5);
+            border: 1px solid transparent;
+        }
+        .score-box {
+            animation: cyanLimeGlow 2s infinite alternate;
+        }
+        .best-box {
+            animation: rainbowGlow 4s linear infinite;
+        }
+
+        @keyframes cyanLimeGlow {
+            0% { border-color: #00ffff; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 0 15px #00ffff; }
+            100% { border-color: #7fff00; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 0 15px #7fff00; }
+        }
+        @keyframes rainbowGlow {
+            0% { border-color: #ff0000; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 0 12px #ff0000; }
+            17% { border-color: #ffaa00; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 0 12px #ffaa00; }
+            33% { border-color: #ffff00; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 0 12px #ffff00; }
+            50% { border-color: #00ff00; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 0 12px #00ff00; }
+            67% { border-color: #00ffff; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 0 12px #00ffff; }
+            83% { border-color: #aa00ff; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 0 12px #aa00ff; }
+            100% { border-color: #ff0000; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 0 12px #ff0000; }
+        }
+
+        .score-label, .best-label { color: #7f8c8d; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; margin-bottom: 2px; }
+        .score-value, .best-value { font-size: 2rem; font-weight: 800; line-height: 1; letter-spacing: 1px; }
+        .score-value { color: #4a90e2; text-shadow: 0 0 15px #4a90e2aa; transition: color 0.15s; }
+        .score-value.flash-green { color: #2ecc71 !important; text-shadow: 0 0 20px #2ecc71; }
+        .best-value { color: #f1c40f; text-shadow: 0 0 15px #f1c40faa; }
+        canvas {
+            display: block; border-radius: 0px; background: #0c101b;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 20px 35px rgba(0,0,0,0.7), 0 0 0 3px rgba(74,144,226,0.35);
+            width: 100%; height: auto; max-width: 400px; aspect-ratio: 1/1; touch-action: none;
+        }
+        .controls { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 15px; width: 100%; }
+        .restart-btn {
+            background: linear-gradient(180deg, #2c3e50 0%, #1a2538 100%); border: none; color: white;
+            font-size: 1rem; font-weight: bold; padding: 12px 28px; border-radius: 30px; cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 0 2px rgba(74,144,226,0.6);
+            letter-spacing: 1px; transition: all 0.2s; text-transform: uppercase; display: flex; align-items: center; gap: 6px;
+        }
+        .restart-btn:hover { background: linear-gradient(180deg, #3a4e6e 0%, #1f2a40 100%); transform: translateY(-2px); }
+        .arrow-hint { color: #95a5a6; font-size: 0.9rem; background: rgba(255,255,255,0.05); padding: 6px 16px; border-radius: 20px; letter-spacing: 0.7px; }
+        .game-over-message { color: #e74c3c; font-weight: bold; font-size: 0.95rem; margin-top: 5px; text-shadow: 0 0 10px red; min-height: 22px; }
+        .leaderboard {
+            background: #121726; border-radius: 24px; padding: 20px;
+            box-shadow: 0 30px 50px rgba(0,0,0,0.7), 0 0 0 2px rgba(74,144,226,0.25);
+            min-width: 240px; max-width: 280px; width: 100%; color: #ddd;
+        }
+        .leaderboard h3 {
+            text-align: center; margin-bottom: 15px; font-size: 1.4rem;
+            animation: rainbow 4s linear infinite; text-shadow: 0 0 8px currentColor;
+        }
+        @keyframes rainbow {
+            0% { color: #ff0000; } 17% { color: #ffaa00; } 33% { color: #ffff00; }
+            50% { color: #00ff00; } 67% { color: #00ffff; } 83% { color: #aa00ff; }
+            100% { color: #ff0000; }
+        }
+        .nickname-area { display: flex; gap: 8px; margin-bottom: 6px; }
+        .nickname-area input {
+            flex: 1; background: #0c101b; border: 1px solid #4a90e2; border-radius: 12px;
+            padding: 10px 12px; color: white; font-size: 0.95rem; outline: none; transition: 0.2s;
+        }
+        .nickname-area input:focus { border-color: #f1c40f; box-shadow: 0 0 8px #f1c40f66; }
+        .nickname-area input:disabled { opacity: 0.6; background: #1a1e2b; border-color: #555; }
+        .nickname-area button {
+            background: #2c3e50; border: none; border-radius: 12px; padding: 10px 14px;
+            color: white; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+        .nickname-area button:disabled { opacity: 0.5; cursor: not-allowed; background: #1e2b3a; }
+        .nickname-area button:not(:disabled):hover { background: #3a4e6e; }
+        .nickname-info { font-weight: bold; font-size: 0.85rem; margin-bottom: 12px; min-height: 20px; }
+        .nickname-info.error { color: #ff3b3b; text-shadow: 0 0 10px #ff0000; }
+        .nickname-info.record { color: #f1c40f; text-shadow: 0 0 8px #f1c40f; }
+        .leader-list { list-style: none; max-height: 300px; overflow-y: auto; padding-right: 5px; }
+        .leader-list li {
+            display: flex; justify-content: space-between; padding: 8px 10px; margin-bottom: 6px;
+            background: rgba(255,255,255,0.03); border-radius: 10px; font-size: 0.95rem;
+        }
+        .leader-list li:nth-child(1) { background: rgba(241,196,15,0.15); }
+        .leader-list li:nth-child(2) { background: rgba(192,192,192,0.12); }
+        .leader-list li:nth-child(3) { background: rgba(205,127,50,0.12); }
+        .leader-name { font-weight: 600; color: #ecf0f1; }
+        .leader-score { color: #f1c40f; font-weight: bold; }
+        @media (max-width: 700px) { .game-wrapper { flex-direction: column; align-items: center; } .leaderboard { max-width: 100%; } }
+    </style>
+</head>
+<body>
+<div class="game-wrapper">
+    <div class="game-container">
+        <div class="header">
+            <div class="score-box"><div class="score-label">Очки</div><div class="score-value" id="scoreDisplay">0</div></div>
+            <div class="best-box"><div class="best-label">Рекорд</div><div class="best-value" id="bestDisplay">0</div></div>
+        </div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="controls">
+            <button class="restart-btn" id="restartButton"><span>↺</span> Заново</button>
+            <div class="arrow-hint"><span>←↑↓→</span> или <span>WASD</span></div>
+        </div>
+        <div class="game-over-message" id="gameOverMsg"></div>
+    </div>
+
+    <div class="leaderboard">
+        <h3>🏆 Таблица лидеров</h3>
+        <div class="nickname-area">
+            <input type="text" id="nicknameInput" placeholder="Твой ник" maxlength="14" autocomplete="off">
+            <button id="saveNickBtn">✓</button>
+        </div>
+        <div class="nickname-info" id="nicknameInfo"></div>
+        <ul class="leader-list" id="leaderList"></ul>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---------- НАСТРОЙКА: твой URL от JSONsilo ----------
+        const JSONSILO_URL = "https://api.jsonsilo.com/public/cc8e5a6b-386f-4a72-85c1-ba1288e510b8";
+
+        // ---------- Игровые переменные ----------
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Размеры сетки – поле 18 клеток в ширину и 16 в высоту
+        const GRID_WIDTH = 18;
+        const GRID_HEIGHT = 16;
+
+        // Размер клетки подбирается, чтобы вписать поле в холст
+        const CELL_SIZE = Math.floor(Math.min(canvas.width / GRID_WIDTH, canvas.height / GRID_HEIGHT));
+        // Смещения для центрирования поля
+        const offsetX = Math.floor((canvas.width - CELL_SIZE * GRID_WIDTH) / 2);
+        const offsetY = Math.floor((canvas.height - CELL_SIZE * GRID_HEIGHT) / 2);
+
+        const scoreSpan = document.getElementById('scoreDisplay');
+        const bestSpan = document.getElementById('bestDisplay');
+        const gameOverMsg = document.getElementById('gameOverMsg');
+        const nicknameInput = document.getElementById('nicknameInput');
+        const saveNickBtn = document.getElementById('saveNickBtn');
+        const nicknameInfo = document.getElementById('nicknameInfo');
+        const leaderList = document.getElementById('leaderList');
+        const body = document.body;
+
+        // Начальная змейка (в пределах 18x16)
+        let snake = [{x:9, y:8}, {x:8, y:8}, {x:7, y:8}];
+        let food = {x:14, y:8};
+        let direction = 'RIGHT', nextDirection = 'RIGHT', gameOver = false, gameWin = false;
+        let score = 0, bestScore = 0;
+        // Змейка чуть медленнее – начальный интервал 160 мс
+        let currentSpeed = 160;
+        const INITIAL_SPEED = 160;
+        let gameInterval = null, movePending = false, lastGameScoreAdded = false;
+        let playerNick = '', nickLocked = false;
+        let globalLeaderboard = [];
+
+        // ---------- Запрещённые слова (маты) ----------
+        const bannedWords = [
+            'бля','хуй','пизд','ебать','ёб','ебан','мудак','гандон','залупа','шлюха','сука',
+            'блять','нахуй','похуй','нихуя','пиздец','хули','еблан','долбоёб','уеб','выеб',
+            'разъеб','хуёв','соси','член','ахуел','охуел','проебали','проеб','заеб','доеб',
+            'наеб','подъеб','скотобаза','говно','жопа','пидор','пидарас','пидр','гондон',
+            'шалава','блядина','сучара','сукин','падла','сволочь','мразь','тварь','урод',
+            'дебил','идиот','козёл','петух','лох','черт','хер','хрен','фигня','хрень',
+            'мудило','козлина','говнюк','засранец','срака','пердун','ссанина'
+        ];
+
+        function containsBannedWord(nick) {
+            return bannedWords.some(w => nick.toLowerCase().includes(w));
+        }
+
+        function triggerMatoffPunishment() {
+            if (navigator.vibrate) navigator.vibrate(10119);
+            body.classList.add('matoff');
+            setTimeout(() => body.classList.remove('matoff'), 1000);
+        }
+
+        // ---------- Работа с JSONsilo ----------
+        async function fetchGlobalLeaderboard() {
+            try {
+                const resp = await fetch(JSONSILO_URL);
+                if (!resp.ok) throw new Error("Ошибка загрузки");
+                const data = await resp.json();
+                globalLeaderboard = data.data || data || [];
+                renderLeaderboardFromArray(globalLeaderboard);
+            } catch (e) {
+                console.warn("Не удалось загрузить таблицу, используется локальная", e);
+                globalLeaderboard = loadLocalLeaderboard();
+                renderLeaderboardFromArray(globalLeaderboard);
+            }
+        }
+
+        async function updateGlobalLeaderboard(newBoard) {
+            try {
+                const resp = await fetch(JSONSILO_URL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newBoard)
+                });
+                if (!resp.ok) throw new Error("Ошибка сохранения");
+                const data = await resp.json();
+                globalLeaderboard = data.data || data || newBoard;
+            } catch (e) {
+                console.warn("Не удалось обновить таблицу, сохраняем локально", e);
+                saveLocalLeaderboard(newBoard);
+            }
+        }
+
+        function loadLocalLeaderboard() {
+            try {
+                const data = localStorage.getItem('snakeGlobalLeaderboard');
+                return data ? JSON.parse(data) : [];
+            } catch { return []; }
+        }
+
+        function saveLocalLeaderboard(board) {
+            localStorage.setItem('snakeGlobalLeaderboard', JSON.stringify(board));
+        }
+
+        function getCurrentBoard() {
+            return globalLeaderboard.length > 0 ? globalLeaderboard : loadLocalLeaderboard();
+        }
+
+        async function upsertResultGlobally(nick, newScore) {
+            if (!nick || newScore === 0) return;
+            const board = getCurrentBoard();
+            const index = board.findIndex(e => e.name === nick);
+            if (index !== -1) {
+                if (newScore > board[index].score) board[index].score = newScore;
+            } else {
+                board.push({ name: nick, score: newScore });
+            }
+            board.sort((a, b) => b.score - a.score);
+            const top10 = board.slice(0, 10);
+            await updateGlobalLeaderboard(top10);
+            renderLeaderboardFromArray(top10);
+            saveLocalLeaderboard(top10);
+        }
+
+        function getRecordForNick(nick) {
+            const board = getCurrentBoard();
+            const entry = board.find(e => e.name === nick);
+            return entry ? entry.score : null;
+        }
+
+        function isNicknameTakenByOther(nick, currentNick) {
+            if (!nick) return false;
+            if (currentNick && nick === currentNick) return false;
+            const board = getCurrentBoard();
+            return board.some(e => e.name === nick);
+        }
+
+        function renderLeaderboardFromArray(board) {
+            leaderList.innerHTML = '';
+            if (!board || board.length === 0) {
+                leaderList.innerHTML = '<li style="justify-content:center; color:#7f8c8d;">Пусто</li>';
+                return;
+            }
+            board.forEach((entry, idx) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="leader-name">${idx+1}. ${escapeHTML(entry.name)}</span>
+                                <span class="leader-score">🏆 ${entry.score}</span>`;
+                leaderList.appendChild(li);
+            });
+        }
+
+        function escapeHTML(str) {
+            return String(str).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m] || m));
+        }
+
+        function showNicknameInfo(msg, isError=false) {
+            nicknameInfo.textContent = msg;
+            nicknameInfo.className = 'nickname-info ' + (isError ? 'error' : 'record');
+        }
+
+        function updateNicknameInfoForCurrentUser() {
+            if (!playerNick) { nicknameInfo.textContent = ''; return; }
+            const rec = getRecordForNick(playerNick);
+            if (rec !== null) showNicknameInfo(`Твой рекорд: ${rec}`, false);
+            else showNicknameInfo(`Привет, ${playerNick}!`, false);
+        }
+
+        function lockNicknameUI() {
+            nickLocked = true;
+            nicknameInput.disabled = true;
+            saveNickBtn.disabled = true;
+            nicknameInput.style.cursor = 'not-allowed';
+            saveNickBtn.style.cursor = 'not-allowed';
+            updateNicknameInfoForCurrentUser();
+        }
+
+        function unlockNicknameUI() {
+            nickLocked = false;
+            nicknameInput.disabled = false;
+            saveNickBtn.disabled = false;
+            nicknameInput.style.cursor = '';
+            saveNickBtn.style.cursor = '';
+        }
+
+        async function saveNick() {
+            if (nickLocked) return;
+            const newNick = nicknameInput.value.trim();
+            if (!newNick) { showNicknameInfo('Введите никнейм', true); return; }
+            if (containsBannedWord(newNick)) {
+                showNicknameInfo('НИКИ С МАТОМ ЗАПРЕШЕНЫ', true);
+                triggerMatoffPunishment();
+                return;
+            }
+            if (isNicknameTakenByOther(newNick, playerNick)) {
+                showNicknameInfo('ИМЯ ЗАНЯТО, ПРИДУМАЙ ДРУГОЕ ИМЯ', true);
+                if (navigator.vibrate) navigator.vibrate(1116);
+                return;
+            }
+            playerNick = newNick;
+            localStorage.setItem('snakeNickname', playerNick);
+            nicknameInput.value = playerNick;
+            lockNicknameUI();
+            updateNicknameInfoForCurrentUser();
+            if (gameOver && !lastGameScoreAdded) await tryAddGameOverResult();
+        }
+
+        function loadNick() {
+            const saved = localStorage.getItem('snakeNickname');
+            if (saved) {
+                playerNick = saved;
+                nicknameInput.value = playerNick;
+                lockNicknameUI();
+            } else {
+                unlockNicknameUI();
+                nicknameInfo.textContent = '';
+            }
+        }
+
+        // ---------- Игровая логика ----------
+        function getEmptyCells() {
+            const all = [];
+            for (let i = 0; i < GRID_WIDTH; i++) {
+                for (let j = 0; j < GRID_HEIGHT; j++) {
+                    all.push({x: i, y: j});
+                }
+            }
+            const snakeSet = new Set(snake.map(s => `${s.x},${s.y}`));
+            return all.filter(c => !snakeSet.has(`${c.x},${c.y}`));
+        }
+
+        function generateRandomFood() {
+            const empty = getEmptyCells();
+            return empty.length ? empty[Math.floor(Math.random() * empty.length)] : null;
+        }
+
+        function placeNewFood() {
+            const newFood = generateRandomFood();
+            if (newFood) food = newFood;
+            else {
+                gameWin = true; gameOver = true; stopGameLoop(); drawBoard();
+                gameOverMsg.textContent = '🏆 ПОБЕДА! Всё поле твоё!';
+                tryAddGameOverResult();
+            }
+        }
+
+        function updateBestScore() {
+            if (score > bestScore) {
+                bestScore = score; bestSpan.textContent = bestScore;
+                localStorage.setItem('snakeBestScore', bestScore);
+            }
+        }
+
+        function checkCollision(head) {
+            if (head.x < 0 || head.x >= GRID_WIDTH || head.y < 0 || head.y >= GRID_HEIGHT) return true;
+            return snake.slice(1).some(s => s.x === head.x && s.y === head.y);
+        }
+
+        function flashScore() {
+            scoreSpan.classList.add('flash-green');
+            setTimeout(() => scoreSpan.classList.remove('flash-green'), 250);
+        }
+
+        async function tryAddGameOverResult() {
+            if (lastGameScoreAdded || !gameOver) return;
+            if (!playerNick) {
+                gameOverMsg.textContent = '💀 Игра окончена! Введи ник для сохранения.';
+                return;
+            }
+            const oldRec = getRecordForNick(playerNick);
+            await upsertResultGlobally(playerNick, score);
+            lastGameScoreAdded = true;
+            updateNicknameInfoForCurrentUser();
+            if (oldRec !== null && score > oldRec) gameOverMsg.textContent = '🎉 Новый рекорд!';
+            else if (oldRec !== null) gameOverMsg.textContent = `Рекорд не побит (твой: ${oldRec})`;
+            else gameOverMsg.textContent = '💀 Результат сохранён.';
+        }
+
+        function moveSnake() {
+            if (gameOver) return;
+            direction = nextDirection;
+            const head = snake[0];
+            let newHead = {x: head.x, y: head.y};
+            switch (direction) {
+                case 'RIGHT': newHead.x++; break;
+                case 'LEFT':  newHead.x--; break;
+                case 'DOWN':  newHead.y++; break;
+                case 'UP':    newHead.y--; break;
+            }
+            const willEat = (newHead.x === food.x && newHead.y === food.y);
+            snake.unshift({...newHead});
+            if (willEat) {
+                score++; scoreSpan.textContent = score; flashScore(); updateBestScore();
+                placeNewFood();
+                if (!gameOver && score % 2 === 0 && currentSpeed > 70) {
+                    currentSpeed = Math.max(70, currentSpeed - 5);
+                    restartInterval();
+                }
+            } else {
+                snake.pop();
+            }
+
+            if (checkCollision(snake[0])) {
+                gameOver = true; gameWin = false; stopGameLoop(); drawBoard();
+                updateBestScore(); tryAddGameOverResult();
+                if (!playerNick) gameOverMsg.textContent = '💀 Игра окончена! Введи ник.';
+                return;
+            }
+            if (snake.length === GRID_WIDTH * GRID_HEIGHT) {
+                gameWin = true; gameOver = true; stopGameLoop(); drawBoard();
+                gameOverMsg.textContent = '🌟 Абсолютная победа!';
+                updateBestScore(); tryAddGameOverResult();
+                return;
+            }
+            movePending = false; drawBoard();
+        }
+
+        function changeDirection(newDir) {
+            if (gameOver) return;
+            const opp = {UP:'DOWN', DOWN:'UP', LEFT:'RIGHT', RIGHT:'LEFT'};
+            if (opp[newDir] === direction) return;
+            nextDirection = newDir;
+            if (!movePending) direction = nextDirection;
+        }
+
+        function onKeyDown(e) {
+            const key = e.key;
+            if (key.startsWith('Arrow') || 'wasd'.includes(key.toLowerCase())) e.preventDefault();
+            if (key === 'ArrowRight' || key.toLowerCase() === 'd') changeDirection('RIGHT');
+            else if (key === 'ArrowLeft' || key.toLowerCase() === 'a') changeDirection('LEFT');
+            else if (key === 'ArrowDown' || key.toLowerCase() === 's') changeDirection('DOWN');
+            else if (key === 'ArrowUp' || key.toLowerCase() === 'w') changeDirection('UP');
+            else if (key.toLowerCase() === 'r') restartGame();
+        }
+
+        let touchStartX = 0, touchStartY = 0, touchMoved = false;
+        function onTouchStart(e) { if (gameOver) return; const t = e.touches[0]; touchStartX = t.clientX; touchStartY = t.clientY; touchMoved = false; }
+        function onTouchMove(e) {
+            if (gameOver || touchMoved) return;
+            const t = e.touches[0], dx = t.clientX - touchStartX, dy = t.clientY - touchStartY;
+            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+            touchMoved = true; e.preventDefault();
+            changeDirection(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'RIGHT' : 'LEFT') : (dy > 0 ? 'DOWN' : 'UP'));
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0c101b';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Рисуем сетку
+            ctx.strokeStyle = '#1f2937';
+            ctx.lineWidth = 0.6;
+            for (let i = 0; i <= GRID_WIDTH; i++) {
+                ctx.beginPath();
+                ctx.moveTo(offsetX + i * CELL_SIZE, offsetY);
+                ctx.lineTo(offsetX + i * CELL_SIZE, offsetY + GRID_HEIGHT * CELL_SIZE);
+                ctx.stroke();
+            }
+            for (let j = 0; j <= GRID_HEIGHT; j++) {
+                ctx.beginPath();
+                ctx.moveTo(offsetX, offsetY + j * CELL_SIZE);
+                ctx.lineTo(offsetX + GRID_WIDTH * CELL_SIZE, offsetY + j * CELL_SIZE);
+                ctx.stroke();
+            }
+
+            // Еда
+            if (food && !gameWin) {
+                const fx = offsetX + food.x * CELL_SIZE, fy = offsetY + food.y * CELL_SIZE;
+                const pulse = Math.sin(Date.now() / 180) * 1.5 + 7;
+                const size = CELL_SIZE - pulse;
+                const off = (CELL_SIZE - size) / 2;
+                ctx.fillStyle = '#e74c3c'; ctx.shadowColor = '#e74c3c'; ctx.shadowBlur = 10;
+                ctx.fillRect(fx + off, fy + off, size, size);
+                ctx.fillStyle = '#f1948a'; ctx.shadowBlur = 4;
+                ctx.fillRect(fx + off + 2, fy + off + 2, size/3, size/3);
+                ctx.fillStyle = '#2ecc71'; ctx.shadowColor = '#27ae60';
+                ctx.fillRect(fx + off + size - 5, fy + off + 2, 4, 4);
+                ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+            }
+
+            // Змейка
+            snake.forEach((seg, i) => {
+                const sx = offsetX + seg.x * CELL_SIZE, sy = offsetY + seg.y * CELL_SIZE;
+                const pad = i === 0 ? 2 : 3;
+                const w = CELL_SIZE - pad * 2, h = CELL_SIZE - pad * 2;
+                const grad = ctx.createLinearGradient(sx, sy, sx + CELL_SIZE, sy + CELL_SIZE);
+                if (i === 0) {
+                    grad.addColorStop(0, '#5dade2'); grad.addColorStop(1, '#2e86c1');
+                } else {
+                    grad.addColorStop(0, `rgba(46,204,113,${0.9 - i * 0.02})`);
+                    grad.addColorStop(1, `rgba(39,174,96,${0.8 - i * 0.02})`);
+                }
+                ctx.fillStyle = grad;
+                ctx.shadowColor = i === 0 ? '#3498db' : '#2ecc71';
+                ctx.shadowBlur = i === 0 ? 10 : 4;
+                ctx.fillRect(sx + pad, sy + pad, w, h);
+
+                if (i === 0) {
+                    ctx.fillStyle = 'white'; ctx.shadowBlur = 0;
+                    const eyeS = 3.2, cx = sx + CELL_SIZE/2, cy = sy + CELL_SIZE/2;
+                    let lx, ly, rx, ry;
+                    if (direction === 'RIGHT') { lx = cx + 3; ly = cy - 4; rx = cx + 3; ry = cy + 4; }
+                    else if (direction === 'LEFT') { lx = cx - 3; ly = cy - 4; rx = cx - 3; ry = cy + 4; }
+                    else if (direction === 'UP') { lx = cx - 4; ly = cy - 3; rx = cx + 4; ry = cy - 3; }
+                    else { lx = cx - 4; ly = cy + 3; rx = cx + 4; ry = cy + 3; }
+                    ctx.beginPath(); ctx.arc(lx, ly, eyeS, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(rx, ry, eyeS, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#111';
+                    ctx.beginPath(); ctx.arc(lx, ly, 1.8, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(rx, ry, 1.8, 0, Math.PI*2); ctx.fill();
+                }
+            });
+            ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 26px "Segoe UI"';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'black'; ctx.shadowBlur = 12;
+                ctx.fillText(gameWin ? '🏆 ПОБЕДА!' : 'ИГРА ОКОНЧЕНА', canvas.width/2, canvas.height/2 - 10);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function stopGameLoop() { if (gameInterval) { clearInterval(gameInterval); gameInterval = null; } }
+        function startGameLoop() { stopGameLoop(); if (!gameOver) gameInterval = setInterval(() => { if (!gameOver) { movePending = true; moveSnake(); } else stopGameLoop(); }, currentSpeed); }
+        function restartInterval() { if (!gameOver) { stopGameLoop(); startGameLoop(); } }
+
+        function restartGame() {
+            stopGameLoop();
+            snake = [{x:9, y:8}, {x:8, y:8}, {x:7, y:8}];
+            direction = 'RIGHT'; nextDirection = 'RIGHT';
+            gameOver = false; gameWin = false; score = 0;
+            currentSpeed = INITIAL_SPEED;
+            movePending = false; lastGameScoreAdded = false;
+            scoreSpan.textContent = '0';
+            scoreSpan.classList.remove('flash-green');
+            gameOverMsg.textContent = '';
+            const empty = getEmptyCells();
+            food = empty.length ? empty[Math.floor(Math.random() * empty.length)] : {x:14, y:8};
+            drawBoard();
+            startGameLoop();
+        }
+
+        async function init() {
+            loadNick();
+            const savedBest = localStorage.getItem('snakeBestScore');
+            if (savedBest && !isNaN(parseInt(savedBest))) bestScore = parseInt(savedBest);
+            bestSpan.textContent = bestScore;
+            await fetchGlobalLeaderboard();
+            updateNicknameInfoForCurrentUser();
+            drawBoard();
+            startGameLoop();
+        }
+
+        window.addEventListener('keydown', onKeyDown);
+        canvas.addEventListener('touchstart', onTouchStart, {passive: false});
+        canvas.addEventListener('touchmove', onTouchMove, {passive: false});
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+        document.getElementById('restartButton').addEventListener('click', restartGame);
+        saveNickBtn.addEventListener('click', saveNick);
+        nicknameInput.addEventListener('keypress', e => { if (e.key === 'Enter') saveNick(); });
+        init();
+        window.addEventListener('beforeunload', stopGameLoop);
+    })();
+</script>
+</body>
+</html>
